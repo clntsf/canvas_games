@@ -189,13 +189,11 @@ window.onload = () => {
     setInterval(() => {snake.update();}, 1000/FPS);                    // set refresh (in ms)
 
     function change_sizescale(){
-        console.log("in!");
         text_input = document.getElementById("sizescale");
-        console.log(text_input, text_input.value);
         try {
             int_val = parseFloat(text_input.value);
             GLOBAL_SIZESCALE = int_val;
-            snake.update_sizescale();
+            snake.update_sizescale(); snake.draw();
         } catch (e) {
             console.log("Invalid input!", text_input.value);
         }
