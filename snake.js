@@ -5,6 +5,7 @@ const TOPMARGIN_SZ = 20;
 const FPS = 5;
 const MAX_BUFFER_LEN = 2
 const INITIAL_SIZE = 3
+GLOBAL_SIZESCALE = 1.0
 
 class Position {
     constructor(x, y){
@@ -41,12 +42,15 @@ class SnakeGame {
         this.ctx = ctx;
 
         this.canvas = this.ctx.canvas;
-        this.canvas.width = this.width*TILE_SZ + 2*MARGIN_SZ;
-        this.canvas.height = this.height*TILE_SZ + 2*MARGIN_SZ + TOPMARGIN_SZ;
-
+        this.update_sizescale();
         this.hs = 0;
 
         this.restart();
+    }
+
+    update_sizescale(){
+        this.canvas.width = (this.width*TILE_SZ + 2*MARGIN_SZ) * GLOBAL_SIZESCALE;
+        this.canvas.height = (this.height*TILE_SZ + 2*MARGIN_SZ + TOPMARGIN_SZ) * GLOBAL_SIZESCALE;
     }
 
     die(){
@@ -74,9 +78,9 @@ class SnakeGame {
 
     draw_px(px) {
         this.ctx.fillRect(
-            MARGIN_SZ + (px.x * TILE_SZ),
-            TOPMARGIN_SZ + MARGIN_SZ + (px.y * TILE_SZ),
-            TILE_SZ, TILE_SZ
+            GLOBAL_SIZESCALE*(MARGIN_SZ + (px.x * TILE_SZ)),
+            GLOBAL_SIZESCALE*(TOPMARGIN_SZ + MARGIN_SZ + (px.y * TILE_SZ)),
+            GLOBAL_SIZESCALE*TILE_SZ, GLOBAL_SIZESCALE*TILE_SZ
             );
     }
     draw() {
@@ -85,14 +89,14 @@ class SnakeGame {
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
         this.ctx.fillStyle = "black";
-        this.ctx.fillRect(MARGIN_SZ, MARGIN_SZ+TOPMARGIN_SZ, this.width*TILE_SZ, this.height*TILE_SZ);
+        this.ctx.fillRect(GLOBAL_SIZESCALE*(MARGIN_SZ), GLOBAL_SIZESCALE*(MARGIN_SZ+TOPMARGIN_SZ), GLOBAL_SIZESCALE*(this.width*TILE_SZ), GLOBAL_SIZESCALE*(this.height*TILE_SZ));
 
-        this.ctx.font = "20px Arial";
-        this.ctx.fillText(`Score: ${this.body.length - 2}`, MARGIN_SZ, 23);
+        this.ctx.font = `${20*GLOBAL_SIZESCALE}px Arial`;
+        this.ctx.fillText(`Score: ${this.body.length - 2}`, GLOBAL_SIZESCALE*(MARGIN_SZ), 23*GLOBAL_SIZESCALE);
 
         let hs_text = `High: ${this.hs}`;
-        let hs_text_offset = this.canvas.width - this.ctx.measureText(hs_text).width - MARGIN_SZ;
-        this.ctx.fillText(hs_text, hs_text_offset, 23);
+        let hs_text_offset = this.canvas.width - this.ctx.measureText(hs_text).width - GLOBAL_SIZESCALE*(MARGIN_SZ);
+        this.ctx.fillText(hs_text, hs_text_offset, GLOBAL_SIZESCALE*23);
 
         this.ctx.fillStyle = "#CF0000";                                     // body
         this.body.forEach((pt) => {this.draw_px(pt);});
@@ -148,7 +152,7 @@ class SnakeGame {
     }
 
     update(){
-
+    
         if ( this.is_alive == false ) { return; }
 
         let last_buffered = this.input_buffer.pop();
@@ -183,4 +187,21 @@ window.onload = () => {
 
     snake.draw();
     setInterval(() => {snake.update();}, 1000/FPS);                    // set refresh (in ms)
+
+    function change_sizescale(){
+        console.log("in!");
+        text_input = document.getElementById("sizescale");
+        console.log(text_input, text_input.value);
+        try {
+            int_val = parseFloat(text_input.value);
+            GLOBAL_SIZESCALE = int_val;
+            snake.update_sizescale();
+        } catch (e) {
+            console.log("Invalid input!", text_input.value);
+        }
+    
+    }
+
+    submit_btn = document.getElementById("submit_sz");
+    submit_btn.addEventListener("click", change_sizescale);
 }
