@@ -1,7 +1,7 @@
 const TILE_SZ = 100;
 const TILE_MARG = 10;
-const SCR_MARG = TILE_SZ * 0.4;
-const BASE_FONTSZ = 55
+const SCR_MARG = TILE_SZ * 0.5;
+const BASE_FONTSZ = 55;
 
 const SCR_SZ = (4*TILE_SZ) + (5*TILE_MARG) + (2*SCR_MARG)
 const GAMEWIN_SZ = SCR_SZ-2*SCR_MARG
@@ -225,7 +225,7 @@ class GameGrid {
     }
 }
 
-document.body.style.backgroundColor = "#faf8ef";
+document.body.style.backgroundColor = "#ded3c9";
 let canv = document.querySelector("canvas#gamescr");
 
 let game = new GameGrid(canv);
