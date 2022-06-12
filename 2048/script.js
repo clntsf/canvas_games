@@ -187,11 +187,10 @@ class GameGrid {
                 while (true) {
                     var next_cell = row[i-idx];
 
+                    if ( next_cell == 0 ) { moved=true; idx += 1; continue; }    // keep going if the space is empty
                     if ( next_cell == undefined || next_cell != cell_val || row_merged == 2 ) {
-                        row[i-idx+1] = cell_val; break; // cell can no longer move/merge, 
-                    }
-                    moved = true;                       // if we ever got past this if, a cell has moved
-                    if ( next_cell == 0) { idx += 1; continue; }    // keep going if the space is empty
+                        row[i-idx+1] = cell_val; break;     // cell can no longer move/merge, 
+                    } moved=true;                            // if we ever got past this if, a cell has moved                   
 
                     row[i] == 0; row_merged++;
                     cell_val = -2*next_cell;            // 'merge' the two cells (ok maybe it's messy)
@@ -200,7 +199,6 @@ class GameGrid {
                 }
             } this.tiles[r] = row.map(x => Math.abs(x));
         }
-
         // ...and returning it to its original orientation
         if (x==1 || y == 1) { this.tiles = this.tiles.map(x => x.reverse())}
         if (y!=0) { this.tiles = transpose(this.tiles); }
@@ -215,11 +213,12 @@ class GameGrid {
         if (!this.accept_input) { return; }   // keypress on cooldown
         let key = e.key.toLowerCase();
         if ( !Directions.hasOwnProperty(key) ) { return; }          // key is not a movement key
-        console.log(`[DEBUG] Movement key pressed (code ${key})`);
 
         this.shift(...(Directions[key]));
         this.accept_input = false;
+
         if (this.game_inprog){
+            console.log(`[DEBUG] Movement key pressed (code ${key})`);
             this.draw();
             this.game_inprog = this.check_legal_moves();
             setTimeout(() => {this.accept_input = true}, 1000*KEY_DELAY);
