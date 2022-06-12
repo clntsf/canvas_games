@@ -1,11 +1,12 @@
-const TILE_SZ = 60;
+const TILE_SZ = 100;
 const TILE_MARG = 10;
-const SCR_MARG = 40;
+const SCR_MARG = TILE_SZ * 0.4;
+const BASE_FONTSZ = 55
 
 const SCR_SZ = (4*TILE_SZ) + (5*TILE_MARG) + (2*SCR_MARG)
 const GAMEWIN_SZ = SCR_SZ-2*SCR_MARG
 
-const KEY_DELAY = 0.2
+const KEY_DELAY = 0.1
 
 const Colors = {
     BG: "#8f7a65",
@@ -26,7 +27,8 @@ const Colors = {
 
 const TextColors = {
     LOW: "#77656a",
-    HIGH: "#f9f6f2"
+    HIGH: "#f9f6f2",
+    SCORE: "white"
 };
 
 const Directions = {
@@ -48,7 +50,7 @@ const Directions = {
 let transpose = arr => arr[0].map( (x,i) => arr.map(x => x[i]) );
 
 class GameGrid {
-    constructor(canv) {
+    constructor(canv, hs=0) {
         this.canv = canv;
         this.canv.width = SCR_SZ;
         this.canv.height = SCR_SZ;
@@ -58,7 +60,10 @@ class GameGrid {
         document.addEventListener("keydown", (k) => {this.keypress(k)});
 
         this.game_inprog = true;
-        this.score = 0
+
+        this.score = 0;
+        this.hs = hs;
+
         this.tiles = [
             [0,0,0,0],
             [0,0,0,0],
@@ -90,34 +95,53 @@ class GameGrid {
     }
 
     check_legal_moves() {                               // check if any legal moves exist
+        let dirs = [[1,0],[-1,0],[0,1],[0,-1]];
         for ( var pos=0; pos<16; pos+=2 ) {             // search in checkerboard pattern (simple optimisation)
 
             let [tx, ty] = this.tile_pos(pos);
             let cell = this.tiles[ty][tx];
             if (cell == 0) { return true; }
 
-            for ( dir of Directions ) {
-                let [dx, dy] = Directions[dir];
-
-                let neighbor_cell = self.tiles[ty+dy][tx+dx];  // if neighbor cell is out of bounds this will be undefined, so no need to catch an error
-                if ( cell == neighbor_cell ) { return true; } 
+            for ( var dir of dirs ) {
+                var [dx, dy] = dir;
+                try {
+                    let neighbor_cell = this.tiles[ty+dy][tx+dx];
+                    if ( cell == neighbor_cell ) { return true; } 
+                } catch(e) {continue;}   // index is out of bounds, we don't care
             }
         } return false; // no cells are empty, and no neighboring cells have equal values (i.e. none mergeable)
     }
 
-    to_loc(idx) {
-        if ( idx<0 || idx>3 ) {throw "invalid idx (must be 0-3 incl.)";}
-        return SCR_MARG + TILE_MARG + idx*(TILE_SZ+TILE_MARG);
+    // converts a single position on the grid to a canvas position in pixels
+    to_loc(tx, ty) {
+        if ( Math.min(tx,ty)<0 || Math.max(tx,ty)>3 ) {throw "invalid points (each must be 0-3 incl.)";}
+        return [
+            SCR_MARG + TILE_MARG + tx*(TILE_SZ+TILE_MARG),
+            SCR_MARG + TILE_MARG + ty*(TILE_SZ+TILE_MARG)
+        ]
     }
 
     draw() {
-        this.ctx.textBaseline = "middle";
 
         this.ctx.fillStyle = Colors.BG;
         this.ctx.fillRect(0,0,SCR_SZ,SCR_SZ);
 
         this.ctx.fillStyle = Colors.GAME_BG;
         this.ctx.fillRect(SCR_MARG, SCR_MARG, GAMEWIN_SZ, GAMEWIN_SZ);
+
+        // score and HS text
+        this.ctx.textBaseline = "middle";
+        this.ctx.font = `${Math.floor(BASE_FONTSZ/2)}px Helvetica Neue`;
+        this.ctx.fillStyle = TextColors.SCORE;
+
+        let score_text = `Score: ${this.score}`;
+        this.ctx.fillText(score_text, SCR_MARG+1, 0.5*SCR_MARG);
+
+        let hs_text = `High: ${this.hs}`;
+        this.ctx.textAlign = "right";
+        this.ctx.fillText(hs_text, SCR_SZ-SCR_MARG-1, 0.5*SCR_MARG);
+
+        this.ctx.textAlign = "left";
 
         // draw cells/text
         for (var pos=0; pos<16; pos++) {
@@ -126,15 +150,14 @@ class GameGrid {
             let tile = this.tiles[ty][tx];
             this.ctx.fillStyle = ( (tile==0) ? Colors.TILE_BG : Colors[tile] );
 
-            var tx_sp = this.to_loc(tx);
-            var ty_sp = this.to_loc(ty);
-            this.ctx.fillRect(tx_sp, ty_sp, TILE_SZ, TILE_SZ);
+            var [tx_sp, ty_sp] = this.to_loc(tx, ty);
+            this.ctx.fillRect( tx_sp, ty_sp, TILE_SZ, TILE_SZ );
             if (tile == 0) { continue; }
 
             // drawing text
             this.ctx.fillStyle = ( (tile<8) ? TextColors.LOW : TextColors.HIGH );
             var tilestr = tile.toString();
-            var fontsize = 45 - 10 * Math.min( Math.max(0, tilestr.length - 2), 3 );
+            var fontsize = BASE_FONTSZ - 10 * Math.min( Math.max(0, tilestr.length - 2), 3 );
             this.ctx.font = `${fontsize}px Helvetica Neue`;
 
             var text_w = this.ctx.measureText(tilestr).width;
@@ -144,7 +167,7 @@ class GameGrid {
 
     // 'shifts' the tiles (the main portion of the game logic)
     shift(x,y){
-        console.log(x, y);
+        if (!this.game_inprog) { return; }
         var moved = false;
         if (x!=0 && y!= 0) {throw "one parameter must be 0";}
 
@@ -183,30 +206,27 @@ class GameGrid {
         if (y!=0) { this.tiles = transpose(this.tiles); }
 
         // also, spawn a tile if any were moved (i.e. if the move did anything)
-        if (moved) {this.spawn_tile()}  
+        if (moved) {this.hs = Math.max(this.hs, this.score); this.spawn_tile();}  
     }
 
     // processes user keypresses
     keypress(e) {
-        if (!this.accept_input) { console.log("nope!"); return; }
-        let key = e.key.toLowerCase();
-        switch (key) {
-            case "w": case "arrowup":
-                this.shift(0, -1); break;
-            case "d": case "arrowright":
-                this.shift(1, 0); break;
-            case "s": case "arrowdown":
-                this.shift(0, 1); break;
-            case "a": case "arrowleft":
-                this.shift(-1, 0); break;
-            default: return;
-        } 
+        if (!this.accept_input) { console.log("nope!"); return; }   // keypress on cooldown
+        let key = e.key.toLowerCase(); console.log(key);
+        if ( !Directions.hasOwnProperty(key) ) { return; }          // key is not a movement key
+
+        this.shift(...(Directions[key]));
         this.accept_input = false;
-        this.draw();
-        setTimeout(() => {this.accept_input = true}, 1000*KEY_DELAY);
+        if (this.game_inprog){
+            this.draw();
+            this.game_inprog = this.check_legal_moves();
+            setTimeout(() => {this.accept_input = true}, 1000*KEY_DELAY);
+        }
     }
 }
 
 document.body.style.backgroundColor = "#faf8ef";
 let canv = document.querySelector("canvas#gamescr");
+
 let game = new GameGrid(canv);
+let new_game = () => game = new GameGrid(canv, game.score);
