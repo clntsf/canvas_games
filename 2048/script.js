@@ -91,7 +91,7 @@ class GameGrid {
 
         let tile_val = (Math.random() < 0.1) ? 4 : 2;
         this.tiles[ty][tx] = tile_val;
-        console.log("Spawned:",tx, ty);
+        console.log(`[DEBUG] Spawned tile with value ${tile_val} @ (${tx}, ${ty})`);
     }
 
     check_legal_moves() {                               // check if any legal moves exist
@@ -100,24 +100,19 @@ class GameGrid {
             let [tx,ty] = this.tile_pos(pos);           // (if it isn't, there are legal moves left)
             if (this.tiles[tx][ty] == 0) {return true;}
         }
+        let tiles = Array.from(this.tiles);
 
-        for ( var pos=0; pos<16; pos+=2 ) {             // search in checkerboard pattern (simple optimisation)
-
-            let [tx, ty] = this.tile_pos(pos);
-            let cell = this.tiles[ty][tx];
-            for ( var dir of dirs ) {
-                var [dx, dy] = dir;
-                try {
-                    let neighbor_cell = this.tiles[ty+dy][tx+dx];
-                    if ( cell == neighbor_cell ) { return true; } 
-                } catch(e) {continue;}   // index is out of bounds, we don't care
-            }
-        } return false; // no cells are empty, and no neighboring cells have equal values (i.e. none mergeable)
+        for (var idx=0; idx<4; ++idx) {                 // simulates each possible shift. if none
+            var [dx, dy] = dirs[idx];                   // produce movement, no legal moves are left
+            var moved = this.shift(dx,dy, true);
+            this.tiles = Array.from(tiles);
+            if ( moved ) {return true;}
+        } return false; // if no shift moved any tiles, no moves are available
     }
 
     // converts a single position on the grid to a canvas position in pixels
     to_loc(tx, ty) {
-        if ( Math.min(tx,ty)<0 || Math.max(tx,ty)>3 ) {throw "invalid points (each must be 0-3 incl.)";}
+        if ( Math.min(tx,ty)<0 || Math.max(tx,ty)>3 ) {throw "[ERROR] in GameGrid.to_loc() -> invalid points (each must be 0-3 incl.)";}
         return [
             SCR_MARG + TILE_MARG + tx*(TILE_SZ+TILE_MARG),
             SCR_MARG + TILE_MARG + ty*(TILE_SZ+TILE_MARG)
@@ -169,10 +164,10 @@ class GameGrid {
     }
 
     // 'shifts' the tiles (the main portion of the game logic)
-    shift(x,y){
+    shift(x,y,sim=false){
         if (!this.game_inprog) { return; }
         var moved = false;
-        if (x!=0 && y!= 0) {throw "one parameter must be 0";}
+        if (x!=0 && y!= 0) {throw `[ERROR] in GameGrid.shift() -> one parameter must be 0 ${x} ${y} ${sim}`;}
 
         // standardizing the array for the shift...
         if (y != 0) { this.tiles = transpose(this.tiles); }
@@ -192,15 +187,17 @@ class GameGrid {
                 while (true) {
                     var next_cell = row[i-idx];
 
-                    if ( next_cell == 0) { idx += 1; continue; }
                     if ( next_cell == undefined || next_cell != cell_val || row_merged == 2 ) {
                         row[i-idx+1] = cell_val; break; // cell can no longer move/merge, 
                     }
+                    moved = true;                       // if we ever got past this if, a cell has moved
+                    if ( next_cell == 0) { idx += 1; continue; }    // keep going if the space is empty
+
                     row[i] == 0; row_merged++;
-                    cell_val = -2*next_cell;        // 'merge' the two cells (ok maybe it's messy)
-                    this.score += -cell_val;        // increment score by value of new cell
+                    cell_val = -2*next_cell;            // 'merge' the two cells (ok maybe it's messy)
+                    if (!sim){this.score += -cell_val;} // increment score by value of new cell
                     idx += 1;
-                } if (idx != 1) {moved = true}
+                }
             } this.tiles[r] = row.map(x => Math.abs(x));
         }
 
@@ -209,14 +206,16 @@ class GameGrid {
         if (y!=0) { this.tiles = transpose(this.tiles); }
 
         // also, spawn a tile if any were moved (i.e. if the move did anything)
-        if (moved) {this.hs = Math.max(this.hs, this.score); this.spawn_tile();}  
+        if (moved && !sim) {this.hs = Math.max(this.hs, this.score); this.spawn_tile();}
+        return moved;
     }
 
     // processes user keypresses
     keypress(e) {
-        if (!this.accept_input) { console.log("nope!"); return; }   // keypress on cooldown
-        let key = e.key.toLowerCase(); console.log(key);
+        if (!this.accept_input) { return; }   // keypress on cooldown
+        let key = e.key.toLowerCase();
         if ( !Directions.hasOwnProperty(key) ) { return; }          // key is not a movement key
+        console.log(`[DEBUG] Movement key pressed (code ${key})`);
 
         this.shift(...(Directions[key]));
         this.accept_input = false;
