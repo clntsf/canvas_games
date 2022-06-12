@@ -6,6 +6,7 @@ const TOPMARGIN_SZ = 20;
 const FPS = 5;
 const MAX_BUFFER_LEN = 2
 const INITIAL_SIZE = 3
+var szscl = 1;
 
 class Position {
     constructor(x, y){
@@ -80,6 +81,7 @@ class SnakeGame {
         );
     }
     draw() {
+        this.ctx.scale(szscl, szscl);
 
         this.ctx.fillStyle = "#DDDDDD";                                     // canvas outline
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
