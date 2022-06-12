@@ -96,12 +96,15 @@ class GameGrid {
 
     check_legal_moves() {                               // check if any legal moves exist
         let dirs = [[1,0],[-1,0],[0,1],[0,-1]];
+        for (var pos=0; pos<16; pos++) {                // quickly checks if the grid is full
+            let [tx,ty] = this.tile_pos(pos);           // (if it isn't, there are legal moves left)
+            if (this.tiles[tx][ty] == 0) {return true;}
+        }
+
         for ( var pos=0; pos<16; pos+=2 ) {             // search in checkerboard pattern (simple optimisation)
 
             let [tx, ty] = this.tile_pos(pos);
             let cell = this.tiles[ty][tx];
-            if (cell == 0) { return true; }
-
             for ( var dir of dirs ) {
                 var [dx, dy] = dir;
                 try {
