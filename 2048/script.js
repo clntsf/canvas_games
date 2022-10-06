@@ -8,6 +8,7 @@ const GAMEWIN_SZ = SCR_SZ-2*SCR_MARG
 
 const KEY_DELAY = 0.1
 
+// colors taken from https://play2048.co/ (sue me, I have no skill in graphic design)
 const Colors = {
     BG: "#8f7a65",
     GAME_BG: "#bbac9f",
